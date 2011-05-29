@@ -258,7 +258,7 @@ public class Appirater {
       }
       
       Date now = new Date();
-      long timeSinceFirstLaunch = mFirstUseDate.getTime() - now.getTime();
+      long timeSinceFirstLaunch = now.getTime() - mFirstUseDate.getTime();
       long timeUntilRate = 1000 * 60 * 60 * 24 * DAYS_UNTIL_PROMPT;
       if( timeSinceFirstLaunch < timeUntilRate ) {
          return false;
