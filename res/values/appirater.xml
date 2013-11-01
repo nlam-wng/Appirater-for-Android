@@ -10,4 +10,10 @@
    <string name="APPIRATER_RATE_BUTTON">Rate %s</string>
    <!-- Text for button to remind the user to review later. -->
    <string name="APPIRATER_RATE_LATER">Remind me later</string>
+   
+   <string name="APPIRATER_DAYS_UNTIL_PROMPT">30</string>
+   <string name="APPIRATER_USES_UNTIL_PROMPT">20</string>
+   <string name="APPIRATER_SIG_EVENTS_UNTIL_PROMPT">-1</string>
+   <string name="APPIRATER_TIME_BEFORE_REMINDING">1</string>
+   <string name="APPIRATER_DEBUG">false</string>
 </resources>

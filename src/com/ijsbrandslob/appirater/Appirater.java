@@ -39,25 +39,19 @@
 
 package com.ijsbrandslob.appirater;
 
-import java.net.URI;
 import java.util.Date;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-
-import com.mirast.test.Appirater.TestProject.R;
-
+import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
-import android.app.Dialog;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -66,7 +60,7 @@ public class Appirater {
     * Users will need to have the same version of your app installed for this
     * many days before they will be prompted to rate it.
     */
-   private static final int DAYS_UNTIL_PROMPT = 30;
+   private static int DAYS_UNTIL_PROMPT;
 
    /*
     * An example of a 'use' would be if the user launched the app. Bringing the
@@ -77,7 +71,7 @@ public class Appirater {
     * Users need to 'use' the same version of the app this many times before
     * before they will be prompted to rate it.
     */
-   private static final int USES_UNTIL_PROMPT = 20;
+   private static int USES_UNTIL_PROMPT;
 
    /*
     * A significant event can be anything you want to be in your app. In a
@@ -89,21 +83,21 @@ public class Appirater {
     * rating. To tell Appirater that the user has performed a significant event,
     * call the method: Appirater.userDidSignificantEvent();
     */
-   private static final int SIG_EVENTS_UNTIL_PROMPT = -1;
+   private static int SIG_EVENTS_UNTIL_PROMPT;
 
    /*
     * Once the rating alert is presented to the user, they might select 'Remind
     * me later'. This value specifies how long (in days) Appirater will wait
     * before reminding them.
     */
-   private static final int TIME_BEFORE_REMINDING = 1;
+   private static int TIME_BEFORE_REMINDING;
 
    /*
     * 'true' will show the Appirater alert everytime. Useful for testing how
     * your message looks and making sure the link to your app's review page
     * works.
     */
-   private static final boolean DEBUG = false;
+   private static boolean DEBUG;
 
    private Context mContext;
    private Date mFirstUseDate;
@@ -113,6 +107,7 @@ public class Appirater {
    private int mCurrentVersion;
    private boolean mRatedCurrentVersion;
    private boolean mDeclinedToRate;
+   private Dialog mRateDialog;
    
    public Appirater( Context context ) {
       mContext = context;
@@ -131,8 +126,8 @@ public class Appirater {
     * be triggered by appEnteredForeground() and userDidSignificantEvent() (as
     * long as you pass true for canPromptForRating in those methods).
     */
-   public void appLaunched( boolean canPromptForRating ) {
-      incrementAndRate( canPromptForRating );
+   public void appLaunched(Activity activity,  boolean canPromptForRating ) {
+      incrementAndRate(activity, canPromptForRating );
    }
 
    /*
@@ -147,8 +142,8 @@ public class Appirater {
     * be triggered by appLaunched() and userDidSignificantEvent() (as long as
     * you pass true for canPromptForRating in those methods).
     */
-   public void appEnteredForeground( boolean canPromptForRating ) {
-      incrementAndRate( canPromptForRating );
+   public void appEnteredForeground(Activity activity, boolean canPromptForRating ) {
+      incrementAndRate(activity, canPromptForRating );
    }
 
    /*
@@ -165,91 +160,104 @@ public class Appirater {
     * be triggered by appLaunched() and appEnteredForeground() (as long as you
     * pass true for canPromptForRating in those methods).
     */
-   public void userDidSignificantEvent( boolean canPromptForRating ) {
-      incrementSignificantEventAndRate( canPromptForRating );
+   public void userDidSignificantEvent(Activity activity,  boolean canPromptForRating ) {
+      incrementSignificantEventAndRate(activity, canPromptForRating );
    }
    
-   private void incrementAndRate( boolean canPromptForRating ) {
+   private void incrementAndRate(Activity activity, boolean canPromptForRating ) {
       incrementUseCount();
       if (canPromptForRating && ratingConditionsHaveBeenMet()
             && connectedToNetwork()) {
-         showRatingAlert();
+         showRatingAlert(activity);
       }
    }
    
-   private void incrementSignificantEventAndRate( boolean canPromptForRating ) {
+   private void incrementSignificantEventAndRate(Activity activity, boolean canPromptForRating ) {
       incrementSignificantEventCount();
       if (canPromptForRating && ratingConditionsHaveBeenMet()
             && connectedToNetwork()) {
-         showRatingAlert();
+         showRatingAlert(activity);
       }
    }
    
    private boolean connectedToNetwork() {
-      try {
-         HttpClient httpclient = new DefaultHttpClient();
-         HttpGet request = new HttpGet( "http://www.google.com/" );
-         HttpResponse result = httpclient.execute( request );
-         int statusCode = result.getStatusLine().getStatusCode();
-         if( statusCode < 400 ) {
-            return true;
-         }
-      } catch( Exception ex ) {
-      }
-      return false;
+       
+       return true;
+//      try {
+//         HttpClient httpclient = new DefaultHttpClient();
+//         HttpGet request = new HttpGet( "http://www.google.com/" );
+//         HttpResponse result = httpclient.execute( request );
+//         int statusCode = result.getStatusLine().getStatusCode();
+//         if( statusCode < 400 ) {
+//            return true;
+//         }
+//      } catch( Exception ex ) {
+//      }
+//      return false;
+   }
+   protected Dialog createRatingAlert(final Activity activity) {
+       final Dialog rateDialog = new Dialog( activity );
+       final Resources res = mContext.getResources();
+       
+//       rateDialog.requestWindowFeature(Window.FEATURE_NO_TITLE); 
+       CharSequence appname = "unknown";
+       try {
+          appname = mContext.getPackageManager().getApplicationLabel( mContext.getPackageManager().getApplicationInfo( mContext.getPackageName(), 0 ) );
+       }catch(NameNotFoundException ex) {
+       }
+       rateDialog.setTitle( String.format( res.getString( R.string.APPIRATER_MESSAGE_TITLE ), appname ) );
+       rateDialog.setContentView( R.layout.appirater );
+       
+       TextView messageArea = (TextView)rateDialog.findViewById( R.id.appirater_message_area );
+       messageArea.setText( String.format( res.getString( R.string.APPIRATER_MESSAGE ), appname ) );
+       
+       Button rateButton = (Button)rateDialog.findViewById( R.id.appirater_rate_button );
+       rateButton.setText( String.format( res.getString( R.string.APPIRATER_RATE_BUTTON ), appname ) );
+       Button remindLaterButton = (Button)rateDialog.findViewById( R.id.appirater_rate_later_button );
+       Button cancelButton = (Button)rateDialog.findViewById( R.id.appirater_cancel_button );
+       
+       rateButton.setOnClickListener( new OnClickListener() {
+          @Override
+          public void onClick( View v ) {
+             Uri marketUri = Uri.parse( String.format( "market://details?id=%s", mContext.getPackageName() ) );
+             Intent marketIntent = new Intent( Intent.ACTION_VIEW ).setData( marketUri );
+             activity.startActivity( marketIntent );
+             ratedCurrentVersion();
+             
+             rateDialog.dismiss();
+             mRateDialog = null;
+          }
+       });
+       
+       remindLaterButton.setOnClickListener( new OnClickListener() {
+          @Override
+          public void onClick( View v ) {
+             mReminderRequestDate = new Date();
+             saveSettings();
+             rateDialog.dismiss();
+             mRateDialog = null;
+          }
+       });
+       
+       cancelButton.setOnClickListener( new OnClickListener() {
+          @Override
+          public void onClick( View v ) {
+             mDeclinedToRate = true;
+             saveSettings();
+             rateDialog.dismiss();
+             mRateDialog = null;
+          }
+       });  
+       return rateDialog;
    }
    
-   private void showRatingAlert() {
-      final Dialog rateDialog = new Dialog( mContext );
-      final Resources res = mContext.getResources();
-      
-      CharSequence appname = "unknown";
-      try {
-         appname = mContext.getPackageManager().getApplicationLabel( mContext.getPackageManager().getApplicationInfo( mContext.getPackageName(), 0 ) );
-      }catch(NameNotFoundException ex) {
-      }
-      rateDialog.setTitle( String.format( res.getString( R.string.APPIRATER_MESSAGE_TITLE ), appname ) );
-      rateDialog.setContentView( R.layout.appirater );
-      
-      TextView messageArea = (TextView)rateDialog.findViewById( R.id.appirater_message_area );
-      messageArea.setText( String.format( res.getString( R.string.APPIRATER_MESSAGE ), appname ) );
-      
-      Button rateButton = (Button)rateDialog.findViewById( R.id.appirater_rate_button );
-      rateButton.setText( String.format( res.getString( R.string.APPIRATER_RATE_BUTTON ), appname ) );
-      Button remindLaterButton = (Button)rateDialog.findViewById( R.id.appirater_rate_later_button );
-      Button cancelButton = (Button)rateDialog.findViewById( R.id.appirater_cancel_button );
-      
-      rateButton.setOnClickListener( new OnClickListener() {
-         @Override
-         public void onClick( View v ) {
-            Uri marketUri = Uri.parse( String.format( "market://details?id=%s", mContext.getPackageName() ) );
-            Intent marketIntent = new Intent( Intent.ACTION_VIEW ).setData( marketUri );
-            mContext.startActivity( marketIntent );
-            mRatedCurrentVersion = true;
-            saveSettings();
-            
-            rateDialog.dismiss();
-         }
-      });
-      
-      remindLaterButton.setOnClickListener( new OnClickListener() {
-         @Override
-         public void onClick( View v ) {
-            mReminderRequestDate = new Date();
-            saveSettings();
-            rateDialog.dismiss();
-         }
-      });
-      
-      cancelButton.setOnClickListener( new OnClickListener() {
-         @Override
-         public void onClick( View v ) {
-            mDeclinedToRate = true;
-            saveSettings();
-            rateDialog.dismiss();
-         }
-      });
-      rateDialog.show();
+   private void showRatingAlert(final Activity activity) {
+       if (mRateDialog != null && mRateDialog.isShowing()) {
+           // Don't show dialog if it is already showing
+           return;
+       }
+       mRateDialog = createRatingAlert(activity);
+       mRateDialog.show();
    }
 
    private boolean ratingConditionsHaveBeenMet() {
@@ -393,6 +401,14 @@ public class Appirater {
    
    private void loadSettings() {
       Resources res = mContext.getResources();
+      
+      // Initialise constants
+      DAYS_UNTIL_PROMPT = Integer.parseInt(res.getString(R.string.APPIRATER_DAYS_UNTIL_PROMPT));
+      USES_UNTIL_PROMPT = Integer.parseInt(res.getString(R.string.APPIRATER_USES_UNTIL_PROMPT));
+      SIG_EVENTS_UNTIL_PROMPT = Integer.parseInt(res.getString(R.string.APPIRATER_SIG_EVENTS_UNTIL_PROMPT));
+      TIME_BEFORE_REMINDING = Integer.parseInt(res.getString(R.string.APPIRATER_TIME_BEFORE_REMINDING));
+      DEBUG = Boolean.parseBoolean(res.getString(R.string.APPIRATER_DEBUG));
+      
       SharedPreferences settings = mContext.getSharedPreferences( mContext.getPackageName(), Context.MODE_PRIVATE );
       
       // Did we save settings before?
@@ -439,5 +455,10 @@ public class Appirater {
       editor.putBoolean( APPIRATER_DECLINED_TO_RATE, mDeclinedToRate );
       
       editor.commit();
+   }
+   
+   public void ratedCurrentVersion() {
+       mRatedCurrentVersion = true;
+       saveSettings();
    }
 }
