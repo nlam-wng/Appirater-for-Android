@@ -461,4 +461,10 @@ public class Appirater {
        mRatedCurrentVersion = true;
        saveSettings();
    }
+   
+   public void cancelDialog() {
+       if (mRateDialog != null) {
+           mRateDialog.dismiss();
+       }
+   }
 }
